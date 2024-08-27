@@ -3,45 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>History</title>
+    <title>Summary History</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <h1>Summary History</h1>
+    <div class="container mt-5">
+        <h1 class="text-center">Summary History</h1>
 
         <!-- Search Form -->
-        <form method="POST" action="{{ url_for('history') }}" class="form-inline my-2 my-lg-0">
+        <form method="POST" action="{{ url_for('history') }}" class="form-inline my-4">
             <input class="form-control mr-sm-2" type="search" name="search" placeholder="Search summaries..." aria-label="Search" value="{{ search_query }}">
-            <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
+            <button class="btn btn-outline-success" type="submit">Search</button>
         </form>
         <!-- End Search Form -->
 
-        <ul>
+        <ul class="list-group mb-4">
             {% for summary in summaries.items %}
-            <li>
+            <li class="list-group-item">
                 <strong>Original:</strong> {{ summary.original_text }}<br>
                 <strong>Summary:</strong> {{ summary.summary_text }}<br>
                 <strong>Language:</strong> {{ summary.language }}<br>
                 <strong>Length:</strong> {{ summary.length_choice }}<br>
-                <a href="{{ url_for('edit_summary', id=summary.id) }}">Edit</a> | 
-                <a href="{{ url_for('delete_summary', id=summary.id) }}">Delete</a>
+                <a href="{{ url_for('edit_summary', id=summary.id) }}" class="btn btn-warning btn-sm">Edit</a>
+                <a href="{{ url_for('delete_summary', id=summary.id) }}" class="btn btn-danger btn-sm">Delete</a>
             </li>
             {% endfor %}
         </ul>
 
-        <div class="pagination">
-            {% if summaries.has_prev %}
-                <a href="{{ url_for('history', page=summaries.prev_num) }}">Previous</a>
-            {% endif %}
-            <span>Page {{ summaries.page }} of {{ summaries.pages }}</span>
-            {% if summaries.has_next %}
-                <a href="{{ url_for('history', page=summaries.next_num) }}">Next</a>
-            {% endif %}
-        </div>
+        <!-- Pagination -->
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if summaries.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('history', page=summaries.prev_num) }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo; Previous</span>
+                    </a>
+                </li>
+                {% endif %}
+                <li class="page-item disabled">
+                    <span class="page-link">Page {{ summaries.page }} of {{ summaries.pages }}</span>
+                </li>
+                {% if summaries.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('history', page=summaries.next_num) }}" aria-label="Next">
+                        <span aria-hidden="true">Next &raquo;</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        <!-- End Pagination -->
 
-        <a href="{{ url_for('home') }}">Back to Home</a>
+        <a href="{{ url_for('home') }}" class="btn btn-primary mt-3">Back to Home</a>
     </div>
+
+    <!-- Bootstrap JS and dependencies (optional but recommended) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
+
