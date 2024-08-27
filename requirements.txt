@@ -2,3 +2,5 @@ Flask==2.3.3
 transformers==4.30.2
 torch==2.0.1
 langdetect==1.0.9
+gunicorn==20.1.0  # Add Gunicorn for serving the app in Heroku
+
