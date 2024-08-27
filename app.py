@@ -9,6 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'supersecretkey')  # Replace with a real secret key
@@ -49,6 +50,12 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
     confirmed = db.Column(db.Boolean, default=False)
+
+    def set_password(self, password):
+        self.password = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password, password)
 
 class Summary(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -113,7 +120,8 @@ def register():
             flash('Email already registered', 'error')
             return redirect(url_for('register'))
 
-        new_user = User(username=username, email=email, password=password)
+        new_user = User(username=username, email=email)
+        new_user.set_password(password)  # Hashing the password before storing
         db.session.add(new_user)
         db.session.commit()
 
@@ -149,14 +157,15 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        user = User.query.filter_by(username=username, password=password).first()
-        if user and user.confirmed:
-            login_user(user)
-            flash('Login successful!', 'success')
-            return redirect(url_for('home'))
-        elif user and not user.confirmed:
-            flash('Please confirm your email first.', 'warning')
-            return redirect(url_for('login'))
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_password(password):  # Verifying the password
+            if user.confirmed:
+                login_user(user)
+                flash('Login successful!', 'success')
+                return redirect(url_for('home'))
+            else:
+                flash('Please confirm your email first.', 'warning')
+                return redirect(url_for('login'))
         else:
             flash('Invalid credentials', 'error')
             return redirect(url_for('login'))
@@ -173,7 +182,8 @@ def logout():
 @app.route('/history')
 @login_required
 def history():
-    summaries = Summary.query.filter_by(user_id=current_user.id).all()
+    page = request.args.get('page', 1, type=int)
+    summaries = Summary.query.filter_by(user_id=current_user.id).paginate(page=page, per_page=5)
     return render_template('history.html', summaries=summaries)
 
 @app.route('/edit_summary/<int:id>', methods=['GET', 'POST'])
