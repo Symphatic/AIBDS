@@ -9,7 +9,7 @@
 <body>
     <div class="container">
         <h1>AI Document Summarizer</h1>
-        <form action="/summarize" method="POST">
+        <form action="/summarize" method="POST" enctype="multipart/form-data">
             <textarea name="content" rows="10" placeholder="Paste your document or article here...">{{ original_text or "" }}</textarea>
             <label for="length">Choose summary length:</label>
             <select name="length" id="length">
@@ -17,6 +17,8 @@
                 <option value="medium">Medium</option>
                 <option value="long">Long</option>
             </select>
+            <label for="file">Or upload a file:</label>
+            <input type="file" name="file" id="file">
             <button type="submit">Summarize</button>
         </form>
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -35,4 +37,3 @@
     </div>
 </body>
 </html>
-
