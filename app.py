@@ -3,11 +3,12 @@ from flask import Flask, render_template, request, flash
 from transformers import pipeline
 from langdetect import detect
 import os
+from PyPDF2 import PdfReader
+from docx import Document
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
-# Configure logging
 logging.basicConfig(filename='app.log', level=logging.INFO, 
                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
 logger = logging.getLogger(__name__)
@@ -29,6 +30,20 @@ def get_summary_length_config(length_choice):
         return {'max_length': 200, 'min_length': 100}
     return {'max_length': 130, 'min_length': 50}
 
+def extract_text_from_pdf(file):
+    reader = PdfReader(file)
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text()
+    return text
+
+def extract_text_from_docx(file):
+    doc = Document(file)
+    text = ""
+    for para in doc.paragraphs:
+        text += para.text + "\n"
+    return text
+
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -36,7 +51,23 @@ def home():
 @app.route('/summarize', methods=['POST'])
 def summarize():
     text = request.form['content']
+    file = request.files['file']
     length_choice = request.form['length']
+
+    if file:
+        try:
+            if file.filename.endswith('.pdf'):
+                text = extract_text_from_pdf(file)
+            elif file.filename.endswith('.docx'):
+                text = extract_text_from_docx(file)
+            else:
+                flash("Unsupported file format. Please upload a PDF or Word document.", "error")
+                logger.warning(f"Unsupported file format: {file.filename}")
+                return render_template('index.html', summary=None, original_text=text)
+        except Exception as e:
+            flash(f"Error processing file: {str(e)}", "error")
+            logger.error(f"Error processing file: {str(e)}")
+            return render_template('index.html', summary=None, original_text=text)
 
     if not text.strip():
         flash("Input text cannot be empty. Please enter some text to summarize.", "error")
