@@ -7,20 +7,34 @@ from PyPDF2 import PdfReader
 from docx import Document
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///summarizer.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Email configuration (use environment variables for sensitive information)
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'  # Replace with your email provider's SMTP server
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
+
 db = SQLAlchemy(app)
+mail = Mail(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+s = URLSafeTimedSerializer(app.secret_key)
 
+# Logging configuration
 logging.basicConfig(filename='app.log', level=logging.INFO, 
                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
 logger = logging.getLogger(__name__)
 
+# Summarization pipelines
 summarizer_en = pipeline("summarization", model="facebook/bart-large-cnn")
 summarizer_es = pipeline("summarization", model="mrm8488/mbart-large-finetuned-opus-en-es-summarization")
 
@@ -28,11 +42,13 @@ summarizer_es = pipeline("summarization", model="mrm8488/mbart-large-finetuned-o
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# Database Models
+# Database models
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
+    confirmed = db.Column(db.Boolean, default=False)
 
 class Summary(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -41,6 +57,13 @@ class Summary(db.Model):
     summary_text = db.Column(db.Text, nullable=False)
     language = db.Column(db.String(10), nullable=False)
     length_choice = db.Column(db.String(10), nullable=False)
+
+# Utility functions
+def send_verification_email(user_email, token):
+    msg = Message('Confirm your Email', recipients=[user_email])
+    link = url_for('confirm_email', token=token, _external=True)
+    msg.body = f'Your link is {link}'
+    mail.send(msg)
 
 def get_summarizer_for_language(lang):
     if lang == 'es':
@@ -70,9 +93,118 @@ def extract_text_from_docx(file):
         text += para.text + "\n"
     return text
 
+# Routes
 @app.route('/')
 def home():
     return render_template('index.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists', 'error')
+            return redirect(url_for('register'))
+
+        if User.query.filter_by(email=email).first():
+            flash('Email already registered', 'error')
+            return redirect(url_for('register'))
+
+        new_user = User(username=username, email=email, password=password)
+        db.session.add(new_user)
+        db.session.commit()
+
+        token = s.dumps(email, salt='email-confirm')
+        send_verification_email(email, token)
+
+        flash('Registration successful. Please check your email to confirm your account.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('register.html')
+
+@app.route('/confirm_email/<token>')
+def confirm_email(token):
+    try:
+        email = s.loads(token, salt='email-confirm', max_age=3600)
+    except SignatureExpired:
+        return '<h1>The token is expired!</h1>'
+    
+    user = User.query.filter_by(email=email).first_or_404()
+    if user.confirmed:
+        flash('Account already confirmed. Please login.', 'info')
+        return redirect(url_for('login'))
+    else:
+        user.confirmed = True
+        db.session.add(user)
+        db.session.commit()
+        flash('You have confirmed your account. Thanks!', 'success')
+        return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        user = User.query.filter_by(username=username, password=password).first()
+        if user and user.confirmed:
+            login_user(user)
+            flash('Login successful!', 'success')
+            return redirect(url_for('home'))
+        elif user and not user.confirmed:
+            flash('Please confirm your email first.', 'warning')
+            return redirect(url_for('login'))
+        else:
+            flash('Invalid credentials', 'error')
+            return redirect(url_for('login'))
+
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('You have been logged out.', 'success')
+    return redirect(url_for('login'))
+
+@app.route('/history')
+@login_required
+def history():
+    summaries = Summary.query.filter_by(user_id=current_user.id).all()
+    return render_template('history.html', summaries=summaries)
+
+@app.route('/edit_summary/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_summary(id):
+    summary = Summary.query.get_or_404(id)
+    if summary.user_id != current_user.id:
+        flash('Unauthorized action.', 'error')
+        return redirect(url_for('history'))
+
+    if request.method == 'POST':
+        summary.original_text = request.form['original_text']
+        summary.summary_text = request.form['summary_text']
+        db.session.commit()
+        flash('Summary updated successfully.', 'success')
+        return redirect(url_for('history'))
+
+    return render_template('edit_summary.html', summary=summary)
+
+@app.route('/delete_summary/<int:id>')
+@login_required
+def delete_summary(id):
+    summary = Summary.query.get_or_404(id)
+    if summary.user_id != current_user.id:
+        flash('Unauthorized action.', 'error')
+        return redirect(url_for('history'))
+
+    db.session.delete(summary)
+    db.session.commit()
+    flash('Summary deleted successfully.', 'success')
+    return redirect(url_for('history'))
 
 @app.route('/summarize', methods=['POST'])
 @login_required
@@ -125,54 +257,6 @@ def summarize():
         return render_template('index.html', summary=None, original_text=text)
 
     return render_template('index.html', summary=summary, original_text=text)
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-
-        if User.query.filter_by(username=username).first():
-            flash('Username already exists', 'error')
-            return redirect(url_for('register'))
-
-        new_user = User(username=username, password=password)
-        db.session.add(new_user)
-        db.session.commit()
-        flash('Registration successful. Please log in.', 'success')
-        return redirect(url_for('login'))
-
-    return render_template('register.html')
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-
-        user = User.query.filter_by(username=username, password=password).first()
-        if user:
-            login_user(user)
-            flash('Login successful!', 'success')
-            return redirect(url_for('home'))
-        else:
-            flash('Invalid credentials', 'error')
-            return redirect(url_for('login'))
-
-    return render_template('login.html')
-
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    flash('You have been logged out.', 'success')
-    return redirect(url_for('login'))
-
-@app.route('/history')
-@login_required
-def history():
-    summaries = Summary.query.filter_by(user_id=current_user.id).all()
-    return render_template('history.html', summaries=summaries)
 
 if __name__ == "__main__":
     db.create_all()  # Creates the database tables
