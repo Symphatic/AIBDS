@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Document Summarizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>AI Document Summarizer</h1>
+        <form action="/summarize" method="POST">
+            <textarea name="content" rows="10" placeholder="Paste your document or article here...">{{ original_text or "" }}</textarea>
+            <button type="submit">Summarize</button>
+        </form>
+        {% if summary %}
+        <h2>Summary</h2>
+        <p>{{ summary }}</p>
+        {% endif %}
+    </div>
+</body>
+</html>
