@@ -4,36 +4,53 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Document Summarizer</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <h1>AI Document Summarizer</h1>
-        <form action="/summarize" method="POST" enctype="multipart/form-data">
-            <textarea name="content" rows="10" placeholder="Paste your document or article here...">{{ original_text or "" }}</textarea>
-            <label for="length">Choose summary length:</label>
-            <select name="length" id="length">
-                <option value="short">Short</option>
-                <option value="medium">Medium</option>
-                <option value="long">Long</option>
-            </select>
-            <label for="file">Or upload a file:</label>
-            <input type="file" name="file" id="file">
-            <button type="submit">Summarize</button>
+    <div class="container mt-5">
+        <h1 class="text-center">AI Document Summarizer</h1>
+        <form action="/summarize" method="POST" enctype="multipart/form-data" class="mt-4">
+            <div class="form-group">
+                <label for="content">Paste your document or article here:</label>
+                <textarea class="form-control" name="content" rows="10" placeholder="Paste your document or article here...">{{ original_text or "" }}</textarea>
+            </div>
+            <div class="form-group">
+                <label for="length">Choose summary length:</label>
+                <select class="form-control" name="length" id="length">
+                    <option value="short">Short</option>
+                    <option value="medium">Medium</option>
+                    <option value="long">Long</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="file">Or upload a file:</label>
+                <input type="file" class="form-control-file" name="file" id="file">
+            </div>
+            <button type="submit" class="btn btn-primary">Summarize</button>
         </form>
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
-            <ul class="flashes">
+            <ul class="flashes mt-3">
             {% for category, message in messages %}
-              <li class="{{ category }}">{{ message }}</li>
+              <li class="alert alert-{{ category }}">{{ message }}</li>
             {% endfor %}
             </ul>
           {% endif %}
         {% endwith %}
         {% if summary %}
-        <h2>Summary</h2>
-        <p>{{ summary }}</p>
+        <div class="mt-4">
+            <h2>Summary</h2>
+            <p class="border p-3">{{ summary }}</p>
+        </div>
         {% endif %}
     </div>
+
+    <!-- Bootstrap JS and dependencies (optional but recommended) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
+
