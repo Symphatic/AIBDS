@@ -17,6 +17,15 @@ def get_summarizer_for_language(lang):
     # Add more conditions for other languages
     return summarizer_en  # Default to English model
 
+def get_summary_length_config(length_choice):
+    if length_choice == 'short':
+        return {'max_length': 50, 'min_length': 25}
+    elif length_choice == 'medium':
+        return {'max_length': 130, 'min_length': 50}
+    elif length_choice == 'long':
+        return {'max_length': 200, 'min_length': 100}
+    return {'max_length': 130, 'min_length': 50}  # Default
+
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -24,6 +33,7 @@ def home():
 @app.route('/summarize', methods=['POST'])
 def summarize():
     text = request.form['content']
+    length_choice = request.form['length']
 
     # Error handling for empty input
     if not text.strip():
@@ -39,9 +49,10 @@ def summarize():
         # Detect language
         language = detect(text)
         summarizer = get_summarizer_for_language(language)
+        length_config = get_summary_length_config(length_choice)
 
         # Perform summarization
-        summary = summarizer(text, max_length=130, min_length=30, do_sample=False)[0]['summary_text']
+        summary = summarizer(text, max_length=length_config['max_length'], min_length=length_config['min_length'], do_sample=False)[0]['summary_text']
     except Exception as e:
         flash(f"Summarization error: {str(e)}", "error")
         return render_template('index.html', summary=None, original_text=text)
