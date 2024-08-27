@@ -1,11 +1,21 @@
 from flask import Flask, render_template, request, flash
 from transformers import pipeline
 from transformers.pipelines import PipelineException
+from langdetect import detect
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"  # Required for flashing messages
 
-summarizer = pipeline("summarization")
+# Load different summarization models for different languages
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+summarizer_es = pipeline("summarization", model="mrm8488/mbart-large-finetuned-opus-en-es-summarization")
+# You can add more models for other languages here
+
+def get_summarizer_for_language(lang):
+    if lang == 'es':
+        return summarizer_es
+    # Add more conditions for other languages
+    return summarizer_en  # Default to English model
 
 @app.route('/')
 def home():
@@ -26,13 +36,16 @@ def summarize():
         return render_template('index.html', summary=None, original_text=text)
 
     try:
+        # Detect language
+        language = detect(text)
+        summarizer = get_summarizer_for_language(language)
+
         # Perform summarization
         summary = summarizer(text, max_length=130, min_length=30, do_sample=False)[0]['summary_text']
-    except PipelineException as e:
+    except Exception as e:
         flash(f"Summarization error: {str(e)}", "error")
         return render_template('index.html', summary=None, original_text=text)
 
-    # Render the result back to the user
     return render_template('index.html', summary=summary, original_text=text)
 
 if __name__ == "__main__":
