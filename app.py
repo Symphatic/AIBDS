@@ -151,6 +151,18 @@ def confirm_email(token):
         flash('You have confirmed your account. Thanks!', 'success')
         return redirect(url_for('login'))
 
+@app.route('/verify_2fa', methods=['GET', 'POST'])
+def verify_2fa():
+    if request.method == 'POST':
+        code = request.form['code']
+        # Placeholder for validating the 2FA code
+        # if validate_2fa_code(session['2fa_user_id'], code):
+        user = User.query.get(session['2fa_user_id'])
+        login_user(user)
+        flash('Login successful!', 'success')
+        return redirect(url_for('home'))
+    return render_template('verify_2fa.html')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -158,7 +170,7 @@ def login():
         password = request.form['password']
 
         user = User.query.filter_by(username=username).first()
-        if user and user.check_password(password):  # Verifying the password
+        if user and user.check_password(password):
             if user.confirmed:
                 login_user(user)
                 flash('Login successful!', 'success')
@@ -167,6 +179,7 @@ def login():
                 flash('Please confirm your email first.', 'warning')
                 return redirect(url_for('login'))
         else:
+            logger.warning(f"Failed login attempt for user: {username} from IP: {request.remote_addr}")
             flash('Invalid credentials', 'error')
             return redirect(url_for('login'))
 
@@ -179,12 +192,21 @@ def logout():
     flash('You have been logged out.', 'success')
     return redirect(url_for('login'))
 
-@app.route('/history')
+@app.route('/history', methods=['GET', 'POST'])
 @login_required
 def history():
     page = request.args.get('page', 1, type=int)
-    summaries = Summary.query.filter_by(user_id=current_user.id).paginate(page=page, per_page=5)
-    return render_template('history.html', summaries=summaries)
+    search_query = request.form.get('search', '')
+
+    if search_query:
+        summaries = Summary.query.filter(
+            Summary.user_id == current_user.id,
+            Summary.original_text.ilike(f'%{search_query}%')
+        ).paginate(page=page, per_page=5)
+    else:
+        summaries = Summary.query.filter_by(user_id=current_user.id).paginate(page=page, per_page=5)
+
+    return render_template('history.html', summaries=summaries, search_query=search_query)
 
 @app.route('/edit_summary/<int:id>', methods=['GET', 'POST'])
 @login_required
