@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Summary</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Edit Summary</h1>
+        <form action="/edit_summary/{{ summary.id }}" method="POST">
+            <label for="original_text">Original Text:</label>
+            <textarea name="original_text" rows="5">{{ summary.original_text }}</textarea>
+            <label for="summary_text">Summary Text:</label>
+            <textarea name="summary_text" rows="5">{{ summary.summary_text }}</textarea>
+            <button type="submit">Save Changes</button>
+        </form>
+        <a href="{{ url_for('history') }}">Back to History</a>
+    </div>
+</body>
+</html>
