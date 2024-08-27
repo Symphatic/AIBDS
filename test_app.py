@@ -25,9 +25,13 @@ class TestSummarizer(unittest.TestCase):
         result = self.app.post('/summarize', data=dict(content=long_text))
         self.assertIn(b'Input text is too long', result.data)
 
-    def test_valid_input(self):
-        # Test valid input returns a summary
+    def test_valid_input_english(self):
         valid_text = "Artificial Intelligence is a branch of computer science."
+        result = self.app.post('/summarize', data=dict(content=valid_text))
+        self.assertIn(b'Summary', result.data)
+
+    def test_valid_input_spanish(self):
+        valid_text = "La inteligencia artificial es una rama de la informática."
         result = self.app.post('/summarize', data=dict(content=valid_text))
         self.assertIn(b'Summary', result.data)
 
