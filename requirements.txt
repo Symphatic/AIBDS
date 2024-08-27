@@ -7,3 +7,4 @@ PyPDF2==3.0.0
 python-docx==0.8.11
 Flask-SQLAlchemy==3.0.3
 Flask-Login==0.6.2
+Flask-Mail==0.9.1
