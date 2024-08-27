@@ -11,6 +11,12 @@
         <h1>AI Document Summarizer</h1>
         <form action="/summarize" method="POST">
             <textarea name="content" rows="10" placeholder="Paste your document or article here...">{{ original_text or "" }}</textarea>
+            <label for="length">Choose summary length:</label>
+            <select name="length" id="length">
+                <option value="short">Short</option>
+                <option value="medium">Medium</option>
+                <option value="long">Long</option>
+            </select>
             <button type="submit">Summarize</button>
         </form>
         {% with messages = get_flashed_messages(with_categories=true) %}
