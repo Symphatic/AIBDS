@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Summary History</h1>
+        <ul>
+            {% for summary in summaries %}
+            <li>
+                <strong>Original:</strong> {{ summary.original_text }}<br>
+                <strong>Summary:</strong> {{ summary.summary_text }}<br>
+                <strong>Language:</strong> {{ summary.language }}<br>
+                <strong>Length:</strong> {{ summary.length_choice }}<br>
+            </li>
+            {% endfor %}
+        </ul>
+        <a href="{{ url_for('home') }}">Back to Home</a>
+    </div>
+</body>
+</html>
