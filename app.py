@@ -11,11 +11,11 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
 
 app = Flask(__name__)
-app.secret_key = "supersecretkey"
+app.secret_key = os.getenv('SECRET_KEY', 'supersecretkey')  # Replace with a real secret key
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///summarizer.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Email configuration (use environment variables for sensitive information)
+# Email configuration
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'  # Replace with your email provider's SMTP server
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
